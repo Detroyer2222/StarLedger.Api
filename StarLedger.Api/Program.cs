@@ -127,6 +127,26 @@ builder.Services.AddOpenTelemetry()
             });
     });
 
+//Cors
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAllOriginsDev",
+        policy =>
+        {
+            policy.AllowAnyOrigin()
+                .AllowAnyMethod()
+                .AllowAnyHeader();
+        });
+
+    options.AddPolicy("StarLedgerWebsite",
+        policy =>
+        {
+            policy.WithOrigins("https://star-ledger-website.vercel.app/")
+                .AllowAnyMethod()
+                .AllowAnyHeader();
+        });
+});
+
 var app = builder.Build();
 
 app.UseSwagger();
@@ -134,10 +154,18 @@ app.UseSwaggerUI(o =>
 {
     o.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
 });
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler();
+    //TODO: for production use the StarLedgerWebsite policy
+    app.UseCors("AllowAllOriginsDev");
+}
+else
+{
+    app.UseDeveloperExceptionPage();
+    app.UseCors("AllowAllOriginsDev");
 }
 
 app.UseHttpsRedirection();
