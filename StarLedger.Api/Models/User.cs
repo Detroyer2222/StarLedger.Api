@@ -1,17 +1,10 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Identity;
 
 namespace StarLedger.Api.Models;
 
 public sealed class User : IdentityUser<Guid>
 {
-    [StringLength(50)]
-    public string DisplayName { get; set; }
-    
-    public DateTime SignUpDate { get; set; }
-    public DateTime LastLogin { get; set; }
-
     public long Balance { get; set; }
     
     [ForeignKey("Organization")]

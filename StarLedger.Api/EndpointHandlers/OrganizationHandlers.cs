@@ -47,7 +47,7 @@ public static class OrganizationHandlers
                 Users = o.Users.Select(u => new UserDto
                 {
                     UserId = u.Id,
-                    UserName = u.DisplayName
+                    UserName = u.UserName
                 }).ToList()
             }).FirstOrDefaultAsync();
 
@@ -147,7 +147,7 @@ public static class OrganizationHandlers
             Users = organization.Users.Select(u => new UserDto
             {
                 UserId = u.Id,
-                UserName = u.DisplayName
+                UserName = u.UserName
             }).ToList()
         };
         
@@ -206,7 +206,7 @@ public static class OrganizationHandlers
             Users = organization.Users.Select(u => new UserDto
             {
                 UserId = u.Id,
-                UserName = u.DisplayName
+                UserName = u.UserName
             }).ToList()
         };
         

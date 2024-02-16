@@ -25,7 +25,7 @@ public static class UserHandlers
             return TypedResults.NotFound($"The user with Guid: {userId} was not found");
         }
 
-        return TypedResults.Ok(new FullUserDto{ UserId = user.Id, UserName = user.DisplayName, Email = user.UserName, OrganizationId = user.OrganizationId ?? Guid.Empty});
+        return TypedResults.Ok(new FullUserDto{ UserId = user.Id, UserName = user.UserName, Email = user.Email, OrganizationId = user.OrganizationId ?? Guid.Empty});
     }
 
     public static async Task<Results<NotFound<string>, Ok<List<UserDto>>>> GetUsersAsync(
@@ -33,7 +33,7 @@ public static class UserHandlers
         ILogger<UserDto> logger)
     {
         var users = await dbContext.Users
-            .Select(u => new UserDto {UserId = u.Id, UserName = u.DisplayName})
+            .Select(u => new UserDto {UserId = u.Id, UserName = u.UserName})
             .ToListAsync();
         
         return TypedResults.Ok(users);
@@ -46,15 +46,16 @@ public static class UserHandlers
     {
         var email = claimsPrincipal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name).Value;
         
-        var user = await dbContext.Users.FirstOrDefaultAsync(u => u.UserName == email);
+        var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Email == email);
 
-        return TypedResults.Ok(new UserDto{ UserId = user.Id, UserName = user.DisplayName});
+        return TypedResults.Ok(new UserDto{ UserId = user.Id, UserName = user.UserName});
     }
     
     public static async Task<Results<NotFound<string>, Ok<FullUserDto>>> UpdateUserAsync(
         StarLedgerDbContext dbContext,
         ILogger<FullUserDto> logger,
-        [FromRoute] Guid userId)
+        [FromRoute] Guid userId,
+        [FromBody] UpdateUserRequest updateUserRequest)
     {
         var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
         
@@ -63,9 +64,21 @@ public static class UserHandlers
             logger.LogWarning("The user with Guid: {0} was not found", userId);
             return TypedResults.NotFound($"The user with Guid: {userId} was not found");
         }
+
+
+        if (updateUserRequest.UserName != null)
+        {
+            user.UserName = updateUserRequest.UserName;
+        }
+
+        if (updateUserRequest.Email != null)
+        {
+            user.Email = updateUserRequest.Email;
+        }
+
         await dbContext.SaveChangesAsync();
         
-        return TypedResults.Ok(new FullUserDto{ UserId = user.Id, UserName = user.DisplayName, Email = user.UserName, OrganizationId = user.OrganizationId ?? Guid.Empty});
+        return TypedResults.Ok(new FullUserDto{ UserId = user.Id, UserName = user.UserName, Email = user.Email, OrganizationId = user.OrganizationId ?? Guid.Empty});
     }
 
     public static async Task<Results<NotFound<string>, ValidationProblem, NoContent>> DeleteUserAsync(
