@@ -12,49 +12,26 @@ using StarLedger.Api.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddProblemDetails();
-builder.Services.AddAuthentication()
-    .AddPolicyScheme("MultiScheme", "Bearer or Cookie", options =>
-    {
-        options.ForwardDefaultSelector = context =>
-        {
-            var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
-            if (authHeader?.StartsWith("Bearer ") == true)
-            {
-                return IdentityConstants.BearerScheme;
-            }
-            //
-            return IdentityConstants.ApplicationScheme;
-        };
-    })
-    .AddBearerToken(IdentityConstants.BearerScheme, options =>
+builder.Services.AddAuthentication().AddBearerToken(IdentityConstants.BearerScheme, options =>
     {
 
-    })
-    .AddCookie(IdentityConstants.ApplicationScheme, options =>
-    {
-        options.ExpireTimeSpan = TimeSpan.FromDays(7);
     });
-var authSchemes = new List<string>
-{
-    IdentityConstants.ApplicationScheme,
-    IdentityConstants.BearerScheme
-};
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy(AuthorizationPolicyConstants.OrganizationAdminPolicy, policy =>
     {
-        policy.AddAuthenticationSchemes(authSchemes.ToArray());
+        policy.AddAuthenticationSchemes(IdentityConstants.BearerScheme);
         policy.RequireClaim(AuthorizationPolicyConstants.OrganizationClaimType);
         policy.RequireClaim(AuthorizationPolicyConstants.OrganizationAdminClaimType, "true");
     })
     .AddPolicy(AuthorizationPolicyConstants.OrganizationOwnerPolicy, policy =>
     {
-        policy.AddAuthenticationSchemes(authSchemes.ToArray());
+        policy.AddAuthenticationSchemes(IdentityConstants.BearerScheme);
         policy.RequireClaim(AuthorizationPolicyConstants.OrganizationClaimType);
         policy.RequireClaim(AuthorizationPolicyConstants.OrganizationAdminClaimType, "true");
     })
     .AddPolicy(AuthorizationPolicyConstants.DeveloperPolicy, policy =>
     {
-        policy.AddAuthenticationSchemes(authSchemes.ToArray());
+        policy.AddAuthenticationSchemes(IdentityConstants.BearerScheme);
         policy.RequireClaim(AuthorizationPolicyConstants.DeveloperPolicy, "true");
     });
 
