@@ -39,16 +39,13 @@ public static class UserHandlers
         return TypedResults.Ok(users);
     }
     
-    public static async Task<Ok<UserDto>> GetUserInformationAsync(
-        StarLedgerDbContext dbContext,
+    public static async Task<Ok<IEnumerable<Claim>>> GetUserInformationAsync(
         ILogger<UserDto> logger,
         ClaimsPrincipal claimsPrincipal)
     {
-        var email = claimsPrincipal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name).Value;
-        
-        var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Email == email);
+        var claims = claimsPrincipal.Claims;
 
-        return TypedResults.Ok(new UserDto{ UserId = user.Id, UserName = user.UserName});
+        return TypedResults.Ok(claims);
     }
     
     public static async Task<Results<NotFound<string>, Ok<FullUserDto>>> UpdateUserAsync(
@@ -82,7 +79,6 @@ public static class UserHandlers
     }
 
     public static async Task<Results<NotFound<string>, ValidationProblem, NoContent>> DeleteUserAsync(
-        StarLedgerDbContext dbContext,
         UserManager<User> userManager,
         ILogger<User> logger,
         [FromRoute] Guid userId)

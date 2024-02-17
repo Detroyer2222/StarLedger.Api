@@ -15,13 +15,7 @@ public static class EndpointRouteBuilderExtensions
 
         identityEndpoints.MapIdentityApi<User>();
 
-        identityWithGuidEndpoints.MapGet("/claims/", IdentityHandler.GetUserClaimsAsync)
-            .WithName("GetUserClaims")
-            .RequireAuthorization()
-            .WithTags("Identity")
-            .WithSummary("Gets a user's claims.")
-            .WithDescription("This endpoint returns all claims associated with a specific user.");
-        identityWithGuidEndpoints.MapPost("/claims/", IdentityHandler.UpdateUserClaimsAsync)
+        identityWithGuidEndpoints.MapPost("/claims", IdentityHandler.UpdateUserClaimsAsync)
             .WithName("UpdateUserClaims")
             .RequireAuthorization()
             .WithSummary("Updates user's claims.")

@@ -12,29 +12,6 @@ namespace StarLedger.Api.EndpointHandlers;
 [EndpointGroupName("Identity")]
 public static class IdentityHandler
 {
-    public static async Task<Results<NotFound<string>, Ok<UserClaimsDto>>> GetUserClaimsAsync(
-        UserManager<User> userManager,
-        StarLedgerDbContext dbContext,
-        ILogger<UserClaimsDto> logger,
-        [FromRoute] Guid userId)
-    {
-        logger.LogInformation("Getting user from database");
-        var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
-        
-        if (user == null)
-        {
-            logger.LogWarning("User with Guid: {0} was not found", userId);
-            return TypedResults.NotFound($"User with Guid {userId} was not found");
-        }
-        
-        var claims = await userManager.GetClaimsAsync(user);
-        logger.LogInformation("Successfully retrieved claims from User with Guid: {0}", user.Id);
-        return TypedResults.Ok(new UserClaimsDto
-        {
-            Claims = new Dictionary<string, string>(claims.Select(c => new KeyValuePair<string, string>(c.Type, c.Value)))
-        });
-    }
-
     public static async Task<Results<NotFound<string>, ValidationProblem, Ok<UserClaimsDto>>> UpdateUserClaimsAsync(
         UserManager<User> userManager,
         StarLedgerDbContext dbContext,
