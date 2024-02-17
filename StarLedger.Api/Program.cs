@@ -14,7 +14,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddProblemDetails();
 builder.Services.AddAuthentication().AddBearerToken(IdentityConstants.BearerScheme, options =>
     {
-
+        options.BearerTokenExpiration = TimeSpan.FromDays(1);
+        options.RefreshTokenExpiration = TimeSpan.FromDays(30);
     });
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy(AuthorizationPolicyConstants.OrganizationAdminPolicy, policy =>
