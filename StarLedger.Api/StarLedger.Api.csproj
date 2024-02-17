@@ -32,7 +32,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Dtos\Identity\" />
     <Folder Include="Dtos\UserResource\" />
     <Folder Include="Dtos\User\" />
     <Folder Include="Dtos\Resource\" />

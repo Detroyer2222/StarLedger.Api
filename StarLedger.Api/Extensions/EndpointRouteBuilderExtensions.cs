@@ -11,15 +11,8 @@ public static class EndpointRouteBuilderExtensions
             .WithParameterValidation()
             .WithOpenApi()
             .WithTags("Identity");
-        var identityWithGuidEndpoints = identityEndpoints.MapGroup("/users/{userId:Guid}");
 
         identityEndpoints.MapIdentityApi<User>();
-
-        identityWithGuidEndpoints.MapPost("/claims", IdentityHandler.UpdateUserClaimsAsync)
-            .WithName("UpdateUserClaims")
-            .RequireAuthorization()
-            .WithSummary("Updates user's claims.")
-            .WithDescription("This endpoint allows for the updating of a user's claims.");
     }
 
     public static void RegisterUserEndpoints(this IEndpointRouteBuilder endpointRouteBuilder)
@@ -117,23 +110,23 @@ public static class EndpointRouteBuilderExtensions
             .WithDescription("This endpoint allows users to create a new organization.");
         organizationWithGuidEndpoints.MapPost("/user", OrganizationHandlers.AddUserToOrganizationAsync)
             .WithName("AddUserToOrganization")
-            .RequireAuthorization(AuthorizationPolicyConstants.OrganizationAdminPolicy)
+            .RequireAuthorization(SecurityConstants.OrganizationAdminPolicy)
             .WithSummary("Adds a user to an organization.")
             .WithDescription("This endpoint allows administrators to add a user to their organization.");
         organizationWithGuidEndpoints.MapPost("/user/admin", OrganizationHandlers.MakeUserAdminInOrganizationAsync)
             .WithName("MakeUserAdminInOrganization")
-            .RequireAuthorization(AuthorizationPolicyConstants.OrganizationOwnerPolicy)
+            .RequireAuthorization(SecurityConstants.OrganizationOwnerPolicy)
             .WithSummary("Promotes a user to be an administrator in an organization.")
             .WithDescription("This endpoint allows the organization owner to promote a user to organization administrator.");
         organizationWithGuidEndpoints
             .MapDelete("/user/{userId:Guid}", OrganizationHandlers.DeleteUserFromOrganizationAsync)
             .WithName("DeleteUserFromOrganization")
-            .RequireAuthorization(AuthorizationPolicyConstants.OrganizationAdminPolicy)
+            .RequireAuthorization(SecurityConstants.OrganizationAdminPolicy)
             .WithSummary("Removes a user from an organization.")
             .WithDescription("This endpoint allows an organization's administrators to remove a user from their organization.");
         organizationWithGuidEndpoints.MapDelete("", OrganizationHandlers.DeleteOrganizationAsync)
             .WithName("DeleteOrganization")
-            .RequireAuthorization(AuthorizationPolicyConstants.OrganizationOwnerPolicy)
+            .RequireAuthorization(SecurityConstants.OrganizationOwnerPolicy)
             .WithSummary("Deletes a specific organization.")
             .WithDescription("This endpoint allows the organization owner to delete an organization.");
 
@@ -187,7 +180,7 @@ public static class EndpointRouteBuilderExtensions
             .WithName("UpdateResources")
             .WithSummary("Update all Resources")
             .WithDescription("This endpoint updates all resources.\n When not available, a new resource will be created")
-            .RequireAuthorization(AuthorizationPolicyConstants.DeveloperClaimType);
+            .RequireAuthorization(SecurityConstants.DeveloperPolicy);
         resourceWithIdEndpoints.MapGet("", ResourceHandler.GetResourceAsync)
             .WithName("GetResourceById")
             .WithSummary("Gets a specific resource.")

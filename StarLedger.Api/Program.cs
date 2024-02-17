@@ -1,6 +1,6 @@
+using System.Text.Json.Serialization;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
-using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -11,30 +11,35 @@ using StarLedger.Api.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddProblemDetails();
+#region Security Configuration
+
 builder.Services.AddAuthentication().AddBearerToken(IdentityConstants.BearerScheme, options =>
-    {
-        options.BearerTokenExpiration = TimeSpan.FromDays(1);
-        options.RefreshTokenExpiration = TimeSpan.FromDays(30);
-    });
+{
+    options.BearerTokenExpiration = TimeSpan.FromDays(1);
+    options.RefreshTokenExpiration = TimeSpan.FromDays(30);
+});
 builder.Services.AddAuthorizationBuilder()
-    .AddPolicy(AuthorizationPolicyConstants.OrganizationAdminPolicy, policy =>
+    .AddPolicy(SecurityConstants.OrganizationAdminPolicy, policy =>
     {
         policy.AddAuthenticationSchemes(IdentityConstants.BearerScheme);
-        policy.RequireClaim(AuthorizationPolicyConstants.OrganizationClaimType);
-        policy.RequireClaim(AuthorizationPolicyConstants.OrganizationAdminClaimType, "true");
+        policy.RequireClaim(SecurityConstants.OrganizationClaimType);
+        policy.RequireRole(SecurityConstants.OrganizationAdminRole);
     })
-    .AddPolicy(AuthorizationPolicyConstants.OrganizationOwnerPolicy, policy =>
+    .AddPolicy(SecurityConstants.OrganizationOwnerPolicy, policy =>
     {
         policy.AddAuthenticationSchemes(IdentityConstants.BearerScheme);
-        policy.RequireClaim(AuthorizationPolicyConstants.OrganizationClaimType);
-        policy.RequireClaim(AuthorizationPolicyConstants.OrganizationAdminClaimType, "true");
+        policy.RequireClaim(SecurityConstants.OrganizationClaimType);
+        policy.RequireClaim(SecurityConstants.OrganizationOwnerRole);
     })
-    .AddPolicy(AuthorizationPolicyConstants.DeveloperPolicy, policy =>
+    .AddPolicy(SecurityConstants.DeveloperPolicy, policy =>
     {
         policy.AddAuthenticationSchemes(IdentityConstants.BearerScheme);
-        policy.RequireClaim(AuthorizationPolicyConstants.DeveloperPolicy, "true");
+        policy.RequireClaim(SecurityConstants.DeveloperRole);
     });
+
+#endregion
+
+#region Database Configuration
 
 SecretClient keyVaultClient =
     new SecretClient(new Uri(builder.Configuration["KeyVaultUri"]!), new DefaultAzureCredential());
@@ -45,8 +50,13 @@ builder.Services.AddDbContext<StarLedgerDbContext>(x =>
     //x.AddSecretClient();
 });
 builder.Services.AddIdentityCore<User>()
+    .AddRoles<IdentityRole<Guid>>()
     .AddEntityFrameworkStores<StarLedgerDbContext>()
     .AddApiEndpoints();
+
+#endregion
+
+#region Swagger Configuration
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -89,6 +99,10 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+#endregion
+
+#region Telemetry Configuration
+
 //Prometheus Telemetry
 builder.Services.AddOpenTelemetry()
     .WithMetrics(o =>
@@ -104,6 +118,10 @@ builder.Services.AddOpenTelemetry()
                 Boundaries = new[] { 0, 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10 }
             });
     });
+
+#endregion
+
+#region Cors Setup
 
 //Cors
 builder.Services.AddCors(options =>
@@ -124,6 +142,20 @@ builder.Services.AddCors(options =>
                 .AllowAnyHeader();
         });
 });
+
+#endregion
+
+#region Other Configuration
+
+builder.Services.AddProblemDetails();
+
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+    options.SerializerOptions.WriteIndented = true;
+});
+
+#endregion
 
 var app = builder.Build();
 
@@ -148,8 +180,16 @@ else
 
 app.UseHttpsRedirection();
 
+#region Authentication and Authorization
+
+SecurityConstants.ConfigureRoles(app.Services).Wait();
+
 app.UseAuthentication();
 app.UseAuthorization();
+
+#endregion
+
+#region Map Endpoints
 
 //Map Metrics
 app.MapPrometheusScrapingEndpoint();
@@ -164,5 +204,7 @@ app.RegisterUserResourceEndpoints();
 app.RegisterOrganizationEndpoints();
 //Map Resource Api Endpoints
 app.RegisterResourceEndpoints();
+
+#endregion
 
 app.Run();

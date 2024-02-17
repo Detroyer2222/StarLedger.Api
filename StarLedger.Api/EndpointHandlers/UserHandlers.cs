@@ -39,13 +39,20 @@ public static class UserHandlers
         return TypedResults.Ok(users);
     }
     
-    public static async Task<Ok<IEnumerable<Claim>>> GetUserInformationAsync(
+    public static async Task<Ok<Dictionary<string, string>>> GetUserInformationAsync(
         ILogger<UserDto> logger,
-        ClaimsPrincipal claimsPrincipal)
+        ClaimsPrincipal claimsPrincipal,
+        UserManager<User> userManager)
     {
-        var claims = claimsPrincipal.Claims;
+        var user = await userManager.GetUserAsync(claimsPrincipal);
 
-        return TypedResults.Ok(claims);
+        var claims = await userManager.GetClaimsAsync(user);
+        var roles = await userManager.GetRolesAsync(user);
+
+        var claimsDictionary = new Dictionary<string, string>(claims.Select(c => new KeyValuePair<string, string>(c.Type, c.Value)));
+        claimsDictionary.Add("Roles", string.Join(", ", roles));
+
+        return TypedResults.Ok(claimsDictionary);
     }
     
     public static async Task<Results<NotFound<string>, Ok<FullUserDto>>> UpdateUserAsync(

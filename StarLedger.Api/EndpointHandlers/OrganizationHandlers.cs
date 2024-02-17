@@ -32,7 +32,7 @@ public static class OrganizationHandlers
 
         return TypedResults.Ok(organizations);
     }
-    
+
     public static async Task<Results<NotFound<string>, Ok<OrganizationWithUserDto>>> GetOrganizationAsync(
         StarLedgerDbContext dbContext,
         ILogger<OrganizationDto> logger,
@@ -79,43 +79,47 @@ public static class OrganizationHandlers
 
         logger.LogInformation("Created new organization with ID {OrganizationId} and Name {Name}", newOrganization.OrganizationId, newOrganization.Name);
 
-        var organizationClaim = new Claim(AuthorizationPolicyConstants.OrganizationClaimType, newOrganization.OrganizationId.ToString());
-        var ownerClaim = new Claim(AuthorizationPolicyConstants.OrganizationOwnerClaimType, "true");
-        var adminClaim = new Claim(AuthorizationPolicyConstants.OrganizationAdminClaimType, "true");
-        var claims = new List<Claim>{organizationClaim, ownerClaim, adminClaim};
-        
         var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == request.CreatedBy);
         if (user == null)
         {
             logger.LogWarning("User with Guid: {0} was not found", request.CreatedBy);
             return TypedResults.NotFound("User was not found");
         }
-        
-        var result = await userManager.AddClaimsAsync(user, claims);
-        if (!result.Succeeded)
+
+        var organizationClaim = new Claim(SecurityConstants.OrganizationClaimType, newOrganization.OrganizationId.ToString());
+        var claimsResult = await userManager.AddClaimAsync(user, organizationClaim);
+        if (!claimsResult.Succeeded)
         {
-            logger.LogError("Updating Claims from User with Guid: {0} resulted in errors: {1}",request.CreatedBy, result.Errors);
-            return ValidationProblemExtension.CreateValidationProblem(result);
+            logger.LogError("Updating Claims of User with Guid: {0} resulted in errors: {1}", request.CreatedBy, claimsResult.Errors);
+            return ValidationProblemExtension.CreateValidationProblem(claimsResult);
         }
+
+        var rolesResult = await userManager.AddToRolesAsync(user, new[] { SecurityConstants.OrganizationOwnerRole, SecurityConstants.OrganizationAdminRole });
+        if (!rolesResult.Succeeded)
+        {
+            logger.LogError("Updating Claims of User with Guid: {0} resulted in errors: {1}", request.CreatedBy, claimsResult.Errors);
+            return ValidationProblemExtension.CreateValidationProblem(claimsResult);
+        }
+
         var updateResult = await userManager.UpdateAsync(user);
         if (!updateResult.Succeeded)
         {
-            logger.LogError("Updating Claims from User with Guid: {0} resulted in errors: {1}",request.CreatedBy, result.Errors);
-            return ValidationProblemExtension.CreateValidationProblem(result);
+            logger.LogError("Updating Roles of User with Guid: {0} resulted in errors: {1}", request.CreatedBy, rolesResult.Errors);
+            return ValidationProblemExtension.CreateValidationProblem(rolesResult);
         }
-        
+
         var linkToOrganization = linkGenerator.GetUriByName(
             httpContext,
             "GetOrganizationById",
             new { organizationId = newOrganization.OrganizationId });
-        
+
         return TypedResults.Created(linkToOrganization, new OrganizationDto
         {
             OrganizationId = newOrganization.OrganizationId,
             Name = newOrganization.Name
         });
     }
-    
+
     public static async Task<Results<NotFound<string>, ValidationProblem, Ok<OrganizationWithUserDto>>> AddUserToOrganizationAsync(
         StarLedgerDbContext dbContext,
         ClaimsPrincipal claimsPrincipal,
@@ -150,39 +154,39 @@ public static class OrganizationHandlers
                 UserName = u.UserName
             }).ToList()
         };
-        
+
         await dbContext.SaveChangesAsync();
-        
-        var organizationClaim = new Claim(AuthorizationPolicyConstants.OrganizationClaimType, organization.OrganizationId.ToString());
+
+        var organizationClaim = new Claim(SecurityConstants.OrganizationClaimType, organization.OrganizationId.ToString());
         //Check if claim already exists
         var existingClaim = await userManager.GetClaimsAsync(user);
-        if (existingClaim.Any(c => c.Type == AuthorizationPolicyConstants.OrganizationClaimType))
+        if (existingClaim.Any(c => c.Type == SecurityConstants.OrganizationClaimType))
         {
-            logger.LogInformation("Claim Key{0} Value{1} already exists for User with Guid: {2}", organizationClaim.Type, organizationClaim.Value, user.Id);
+            logger.LogInformation("Claim Key {0} Value {1} already exists for User with Guid: {2}", organizationClaim.Type, organizationClaim.Value, user.Id);
             return TypedResults.Ok(organizationWithUsers);
         }
         var result = await userManager.AddClaimAsync(user, organizationClaim);
         if (!result.Succeeded)
         {
-            logger.LogError("Updating Claims from User with Guid: {0} resulted in errors: {1}",user.Id, result.Errors);
+            logger.LogError("Updating Claims from User with Guid: {0} resulted in errors: {1}", user.Id, result.Errors);
             return ValidationProblemExtension.CreateValidationProblem(result);
         }
         var updateResult = await userManager.UpdateAsync(user);
         if (!updateResult.Succeeded)
         {
-            logger.LogError("Updating Claims from User with Guid: {0} resulted in errors: {1}",user.Id, result.Errors);
+            logger.LogError("Updating Claims from User with Guid: {0} resulted in errors: {1}", user.Id, result.Errors);
             return ValidationProblemExtension.CreateValidationProblem(result);
         }
-        
+
         return TypedResults.Ok(organizationWithUsers);
     }
-    
-        public static async Task<Results<NotFound<string>, ValidationProblem, Ok<OrganizationWithUserDto>>> MakeUserAdminInOrganizationAsync(
-        StarLedgerDbContext dbContext,
-        UserManager<User> userManager,
-        ILogger<AddUserToOrganizationRequest> logger,
-        [FromRoute] Guid organizationId,
-        [FromBody] AddUserToOrganizationRequest request)
+
+    public static async Task<Results<NotFound<string>, ValidationProblem, Ok<OrganizationWithUserDto>>> MakeUserAdminInOrganizationAsync(
+    StarLedgerDbContext dbContext,
+    UserManager<User> userManager,
+    ILogger<AddUserToOrganizationRequest> logger,
+    [FromRoute] Guid organizationId,
+    [FromBody] AddUserToOrganizationRequest request)
     {
         var user = await userManager.FindByIdAsync(request.UserId.ToString());
         if (user == null)
@@ -199,7 +203,7 @@ public static class OrganizationHandlers
         }
 
         user.OrganizationId = organizationId;
-        
+
         var organizationWithUsers = new OrganizationWithUserDto
         {
             OrganizationId = organization.OrganizationId,
@@ -209,87 +213,88 @@ public static class OrganizationHandlers
                 UserName = u.UserName
             }).ToList()
         };
-        
+
         await dbContext.SaveChangesAsync();
         logger.LogInformation("User with ID {0} received Admin privileges in Organization with ID {1}.", user.Id, organization.OrganizationId);
 
-        var adminClaim = new Claim(AuthorizationPolicyConstants.OrganizationAdminClaimType, "true");
-        //check if claim already exists
-        var existingClaim = await userManager.GetClaimsAsync(user);
-        if (existingClaim.Any(c => c.Type == AuthorizationPolicyConstants.OrganizationAdminClaimType))
+
+        var roles = await userManager.GetRolesAsync(user);
+        if (roles.Contains(SecurityConstants.OrganizationAdminRole))
         {
-            logger.LogInformation("Claim Key{0} Value{1} already exists for User with Guid: {2}", adminClaim.Type, adminClaim.Value, user.Id);
+            logger.LogInformation("User with ID {0} already has Admin privileges in Organization with ID {1}.", user.Id, organization.OrganizationId);
             return TypedResults.Ok(organizationWithUsers);
         }
-        var result = await userManager.AddClaimAsync(user, adminClaim);
-        if (!result.Succeeded)
+
+        var rolesResult = await userManager.AddToRoleAsync(user, SecurityConstants.OrganizationAdminRole);
+        if (!rolesResult.Succeeded)
         {
-            logger.LogError("Updating Claims from User with Guid: {0} resulted in errors: {1}",user.Id, result.Errors);
-            return ValidationProblemExtension.CreateValidationProblem(result);
+            logger.LogError("Updating Roles from User with Guid: {0} resulted in errors: {1}", user.Id, rolesResult.Errors);
+            return ValidationProblemExtension.CreateValidationProblem(rolesResult);
         }
+
         var updateResult = await userManager.UpdateAsync(user);
         if (!updateResult.Succeeded)
         {
-            logger.LogError("Updating Claims from User with Guid: {0} resulted in errors: {1}",user.Id, result.Errors);
-            return ValidationProblemExtension.CreateValidationProblem(result);
+            logger.LogError("Updating Claims from User with Guid: {0} resulted in errors: {1}", user.Id, updateResult.Errors);
+            return ValidationProblemExtension.CreateValidationProblem(updateResult);
         }
-        
+
         return TypedResults.Ok(organizationWithUsers);
     }
-        
-        public static async Task<Results<NotFound<string>, NoContent>> DeleteOrganizationAsync(
-            StarLedgerDbContext dbContext,
-            ILogger<OrganizationDto> logger,
-            [FromRoute] Guid organizationId)
+
+    public static async Task<Results<NotFound<string>, NoContent>> DeleteOrganizationAsync(
+        StarLedgerDbContext dbContext,
+        ILogger<OrganizationDto> logger,
+        [FromRoute] Guid organizationId)
+    {
+        var organization = await dbContext.Organizations.FindAsync(organizationId);
+        if (organization == null)
         {
-            var organization = await dbContext.Organizations.FindAsync(organizationId);
-            if (organization == null)
-            {
-                logger.LogWarning("Organization with ID {0} not found.", organizationId);
-                return TypedResults.NotFound($"Organization with ID {organizationId} not found.");
-            }
-
-            dbContext.Organizations.Remove(organization);
-            await dbContext.SaveChangesAsync();
-
-            logger.LogInformation("Deleted organization with ID {0}.", organizationId);
-
-            return TypedResults.NoContent();
+            logger.LogWarning("Organization with ID {0} not found.", organizationId);
+            return TypedResults.NotFound($"Organization with ID {organizationId} not found.");
         }
-        
-        public static async Task<Results<NotFound<string>, ValidationProblem, NoContent>> DeleteUserFromOrganizationAsync(
-            StarLedgerDbContext dbContext,
-            UserManager<User> userManager,
-            ILogger<OrganizationDto> logger,
-            [FromRoute] Guid organizationId,
-            [FromRoute] Guid userId)
+
+        dbContext.Organizations.Remove(organization);
+        await dbContext.SaveChangesAsync();
+
+        logger.LogInformation("Deleted organization with ID {0}.", organizationId);
+
+        return TypedResults.NoContent();
+    }
+
+    public static async Task<Results<NotFound<string>, ValidationProblem, NoContent>> DeleteUserFromOrganizationAsync(
+        StarLedgerDbContext dbContext,
+        UserManager<User> userManager,
+        ILogger<OrganizationDto> logger,
+        [FromRoute] Guid organizationId,
+        [FromRoute] Guid userId)
+    {
+        var organization = await dbContext.Organizations.FindAsync(organizationId);
+        if (organization == null)
         {
-            var organization = await dbContext.Organizations.FindAsync(organizationId);
-            if (organization == null)
-            {
-                logger.LogWarning("Organization with ID {0} not found.", organizationId);
-                return TypedResults.NotFound($"Organization with ID {organizationId} not found.");
-            }
-
-            var user = await userManager.FindByIdAsync(userId.ToString());
-            if (user == null)
-            {
-                logger.LogWarning("User with ID {0} not found.", userId);
-                return TypedResults.NotFound($"User with ID {userId} not found.");
-            }
-
-            user.OrganizationId = null;
-            var result = await userManager.UpdateAsync(user);
-            if (!result.Succeeded)
-            {
-                logger.LogError("Failed to remove User with ID {0} from the organization. Errors: {1}", userId, result.Errors);
-                return ValidationProblemExtension.CreateValidationProblem(result);
-            }
-
-            logger.LogInformation("User with ID {UserId} has been removed from the organization.", userId);
-            return TypedResults.NoContent();
+            logger.LogWarning("Organization with ID {0} not found.", organizationId);
+            return TypedResults.NotFound($"Organization with ID {organizationId} not found.");
         }
-    
+
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user == null)
+        {
+            logger.LogWarning("User with ID {0} not found.", userId);
+            return TypedResults.NotFound($"User with ID {userId} not found.");
+        }
+
+        user.OrganizationId = null;
+        var result = await userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            logger.LogError("Failed to remove User with ID {0} from the organization. Errors: {1}", userId, result.Errors);
+            return ValidationProblemExtension.CreateValidationProblem(result);
+        }
+
+        logger.LogInformation("User with ID {UserId} has been removed from the organization.", userId);
+        return TypedResults.NoContent();
+    }
+
     public static async Task<Results<NotFound<string>, Ok<OrganizationBalanceDto>>> GetOrganizationBalanceAsync(
         StarLedgerDbContext dbContext,
         ILogger<OrganizationBalanceDto> logger,
@@ -303,10 +308,10 @@ public static class OrganizationHandlers
         }
 
         long totalBalance = organization.Users.Sum(u => u.Balance);
-        
+
         logger.LogInformation("Retrieved total balance for organization with ID {OrganizationId}. Total balance: {TotalBalance}", organizationId, totalBalance);
 
-        return TypedResults.Ok(new OrganizationBalanceDto{ OrganizationId = organization.OrganizationId, Balance = totalBalance});
+        return TypedResults.Ok(new OrganizationBalanceDto { OrganizationId = organization.OrganizationId, Balance = totalBalance });
     }
 
     public static async Task<Results<NotFound<string>, NoContent, Ok<List<OrganizationBalanceHistoryDto>>>> GetOrganizationBalanceHistoryAsync(
@@ -325,19 +330,19 @@ public static class OrganizationHandlers
         {
             endDate = DateOnly.MaxValue;
         }
-        
+
         var organization = await dbContext.Organizations.Include(o => o.Users).FirstOrDefaultAsync(o => o.OrganizationId == organizationId);
         if (organization == null)
         {
             logger.LogWarning("Organization with ID {OrganizationId} not found.", organizationId);
             return TypedResults.NotFound($"Organization with ID {organizationId} not found.");
         }
-        
+
         var balanceHistoryQuery = dbContext.UserBalanceHistories.AsQueryable();
 
         // Filter by organization's users
         balanceHistoryQuery = balanceHistoryQuery.Where(ubh => organization.Users.Select(u => u.Id).Contains(ubh.UserId));
-        
+
         balanceHistoryQuery = balanceHistoryQuery.Where(ubh => ubh.Timestamp >= startDate.Value && ubh.Timestamp <= endDate!.Value);
 
         var balanceHistories = await balanceHistoryQuery
@@ -355,12 +360,12 @@ public static class OrganizationHandlers
             logger.LogWarning("No Results found for OrganizationBalanceHistory with Date range from: {0} to {1}", startDate, endDate);
             return TypedResults.NoContent();
         }
-        
+
         logger.LogInformation("Retrieved balance history for organization with ID {OrganizationId}.", organizationId);
 
         return TypedResults.Ok(balanceHistories);
     }
-    
+
     public static async Task<Results<NotFound<string>, NoContent, Ok<List<OrganizationResourceDto>>>> GetOrganizationResourcesAsync(
         StarLedgerDbContext dbContext,
         ILogger<List<OrganizationResourceDto>> logger,
@@ -372,7 +377,7 @@ public static class OrganizationHandlers
             logger.LogWarning("Organization with ID {OrganizationId} not found.", organizationId);
             return TypedResults.NotFound($"Organization with ID {organizationId} not found.");
         }
-        
+
         var resources = await dbContext.Users
             .Where(u => u.OrganizationId == organizationId)
             .SelectMany(u => u.UserResources)
@@ -394,7 +399,7 @@ public static class OrganizationHandlers
         logger.LogInformation("Retrieved resources for organization with ID {OrganizationId}.", organizationId);
         return TypedResults.Ok(resources);
     }
-    
+
     public static async Task<Results<NotFound<string>, NoContent, Ok<List<OrganizationResourceQuantityHistory>>>> GetOrganizationResourceHistoryAsync(
         StarLedgerDbContext dbContext,
         ILogger<List<OrganizationResourceQuantityHistory>> logger,
@@ -411,7 +416,7 @@ public static class OrganizationHandlers
         {
             endDate = DateOnly.MaxValue;
         }
-        
+
         //Check if organization exists
         var organization = await dbContext.Organizations.FirstOrDefaultAsync(o => o.OrganizationId == organizationId);
         if (organization == null)
@@ -421,7 +426,7 @@ public static class OrganizationHandlers
         }
 
         var resourceHistoryQuery = dbContext.ResourceQuantityHistories.AsQueryable();
-        
+
         //Filter by Organization users
         resourceHistoryQuery =
             resourceHistoryQuery.Where(rh => organization.Users.Select(u => u.Id).Contains(rh.UserId));
@@ -438,7 +443,7 @@ public static class OrganizationHandlers
                 Timestamp = group.Key.Timestamp,
                 Quantity = group.Sum(rh => rh.Quantity)
             }).ToListAsync();
-        
+
 
         if (organizationResourceHistories.Count < 1)
         {
@@ -452,7 +457,7 @@ public static class OrganizationHandlers
 
     public static async Task<Results<NotFound<string>, NoContent, Ok<List<OrganizationBalanceByUserDto>>>> GetOrganizationBalanceByUserAsync(
         StarLedgerDbContext dbContext,
-        ILogger<List<OrganizationBalanceByUserDto>> logger, 
+        ILogger<List<OrganizationBalanceByUserDto>> logger,
         [FromRoute] Guid organizationId)
     {
         //Check if organization exists
@@ -462,7 +467,7 @@ public static class OrganizationHandlers
             logger.LogWarning("Organization with ID {OrganizationId} not found.", organizationId);
             return TypedResults.NotFound($"Organization with ID {organizationId} not found.");
         }
-        
+
         var balanceByUser = organization.Users.Select(u => new OrganizationBalanceByUserDto
         {
             OrganizationId = organizationId,
@@ -497,7 +502,7 @@ public static class OrganizationHandlers
         var resourcesByUser = await dbContext.Users
             .Where(u => u.OrganizationId == organizationId)
             .SelectMany(u => u.UserResources.Select(ur => new { User = u, UserResource = ur }))
-            .GroupBy(x => new { x.UserResource.ResourceId, x.User.Id})
+            .GroupBy(x => new { x.UserResource.ResourceId, x.User.Id })
             .Select(group => new OrganizationResourceByUserDto
             {
                 OrganizationId = organizationId,
@@ -513,9 +518,9 @@ public static class OrganizationHandlers
             logger.LogWarning("No resources found for organization with ID {OrganizationId}.", organizationId);
             return TypedResults.NoContent();
         }
-        
+
         logger.LogInformation("Retrieved resources for organization with ID {OrganizationId}.", organizationId);
         return TypedResults.Ok(resourcesByUser);
     }
-    
+
 }
