@@ -29,12 +29,12 @@ builder.Services.AddAuthorizationBuilder()
     {
         policy.AddAuthenticationSchemes(IdentityConstants.BearerScheme);
         policy.RequireClaim(SecurityConstants.OrganizationClaimType);
-        policy.RequireClaim(SecurityConstants.OrganizationOwnerRole);
+        policy.RequireRole(SecurityConstants.OrganizationOwnerRole);
     })
     .AddPolicy(SecurityConstants.DeveloperPolicy, policy =>
     {
         policy.AddAuthenticationSchemes(IdentityConstants.BearerScheme);
-        policy.RequireClaim(SecurityConstants.DeveloperRole);
+        policy.RequireRole(SecurityConstants.DeveloperRole);
     });
 
 #endregion
