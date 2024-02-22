@@ -49,7 +49,11 @@ builder.Services.AddDbContext<StarLedgerDbContext>(x =>
     x.UseSqlServer(sqlConnectionString);
     //x.AddSecretClient();
 });
-builder.Services.AddIdentityCore<User>()
+builder.Services.AddIdentityCore<User>(options =>
+    {
+        options.User.RequireUniqueEmail = true;
+        //options.User.UserName = true;
+    })
     .AddRoles<IdentityRole<Guid>>()
     .AddEntityFrameworkStores<StarLedgerDbContext>()
     .AddApiEndpoints();
