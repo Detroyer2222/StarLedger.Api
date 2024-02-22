@@ -50,12 +50,12 @@ public static class UserHandlers
     }
     
     public static async Task<Results<NotFound<string>, Ok<FullUserDto>>> UpdateUserAsync(
-        StarLedgerDbContext dbContext,
+        UserManager<User> userManager,
         ILogger<FullUserDto> logger,
         [FromRoute] Guid userId,
         [FromBody] UpdateUserRequest updateUserRequest)
     {
-        var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await userManager.FindByIdAsync(userId.ToString());
         
         if (user == null)
         {
@@ -74,7 +74,7 @@ public static class UserHandlers
             user.Email = updateUserRequest.Email;
         }
 
-        await dbContext.SaveChangesAsync();
+        await userManager.UpdateAsync(user);
         
         return TypedResults.Ok(new FullUserDto{ UserId = user.Id, UserName = user.UserName, Email = user.Email, OrganizationId = user.OrganizationId ?? Guid.Empty});
     }
