@@ -39,7 +39,7 @@ public static class UserHandlers
         return TypedResults.Ok(users);
     }
     
-    public static async Task<Ok<Dictionary<string, string>>> GetUserInformationAsync(
+    public static async Task<Ok<Dictionary<string, string>>> GetUserClaimsAsync(
         ILogger<UserDto> logger,
         ClaimsPrincipal claimsPrincipal)
     {

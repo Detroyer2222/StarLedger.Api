@@ -28,14 +28,14 @@ public static class EndpointRouteBuilderExtensions
             .WithName("GetUsers")
             .WithSummary("Gets all users.")
             .WithDescription("This endpoint returns all users.");
-        userEndpoints.MapGet("/information", UserHandlers.GetUserInformationAsync)
-            .WithName("GetUserInformation")
-            .WithSummary("Gets information for a specific user.")
+        userEndpoints.MapGet("/claims", UserHandlers.GetUserClaimsAsync)
+            .WithName("GetUserClaims")
+            .WithSummary("Gets claims for a specific user.")
             .WithDescription("This endpoint returns the information of the user associated to the Bearer Claims.");
         userWithGuidEndpoints.MapGet("", UserHandlers.GetUserAsync)
             .WithName("GetUser")
-            .WithSummary("Gets a specific user.")
-            .WithDescription("This endpoint returns the user associated to the specified userId.");
+            .WithSummary("Gets a specific user information.")
+            .WithDescription("This endpoint returns the user information associated to the specified userId.");
         userWithGuidEndpoints.MapPost("", UserHandlers.UpdateUserAsync)
             .WithName("UpdateUser")
             .WithSummary("Updates a specific user.")
