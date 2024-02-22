@@ -164,7 +164,7 @@ public static class UserResourceHandler
 
         if (user is null)
         {
-            logger.LogWarning("The user with Guid: {0} was not found", userId);
+            logger.LogWarning("The user with Guid: {UserId} was not found", userId);
             return TypedResults.NotFound($"The user with Guid: {userId} was not found");
         }
 

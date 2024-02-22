@@ -38,12 +38,12 @@ public static class ResourceHandler
         ILogger<ResourceDto> logger,
         [FromRoute] int resourceId)
     {
-        logger.LogInformation("Getting Resource with ID: {0}", resourceId);
+        logger.LogInformation("Getting Resource with ID: {ResourceId}", resourceId);
         var resource = await dbContext.Resources.FirstOrDefaultAsync(r => r.ResourceId == resourceId);
 
         if (resource is null)
         {
-            logger.LogWarning("No resource with ID: {0} found", resourceId);
+            logger.LogWarning("No resource with ID: {ResourceId} found", resourceId);
             return TypedResults.NotFound($"Resource with ID: {resourceId} not found");
         }
 
@@ -73,7 +73,7 @@ public static class ResourceHandler
 
             if (existingResource is not null)
             {
-                logger.LogInformation("Resources with Code:{0} already exists", existingResource.Code);
+                logger.LogInformation("Resources with Code: {ResourceCode} already exists", existingResource.Code);
 
                 existingResource.Name = resourceToUpdate.Name;
                 existingResource.Code = resourceToUpdate.Code;
@@ -84,7 +84,7 @@ public static class ResourceHandler
             }
             else
             {
-                logger.LogInformation("Resources with Code:{0} is being created", resourceToUpdate.Code);
+                logger.LogInformation("Resources with Code:{ResourceCode} is being created", resourceToUpdate.Code);
                 // Add new resource
                 var newResource = new Resource
                 {

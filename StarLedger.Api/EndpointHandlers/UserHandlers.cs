@@ -40,22 +40,11 @@ public static class UserHandlers
     }
 
     public static async Task<Results<Ok<Dictionary<string, string>>, NotFound<string>>> GetUserClaimsAsync(
-        UserManager<User> userManager,
         ILogger<UserDto> logger,
         ClaimsPrincipal claimsPrincipal)
     {
-        var user = await userManager.GetUserAsync(claimsPrincipal);
-        if (user is null)
-        {
-            logger.LogWarning("The user with Guid: {0} was not found", user.Id);
-            return TypedResults.NotFound($"The user with Guid: {user.Id} was not found");
-        }
-
-        var claims = await userManager.GetClaimsAsync(user);
-        if (claims.Count < 1)
-        {
-            claims = claimsPrincipal.Claims.ToList();
-        }
+        logger.LogInformation("Getting claims for user {UserId}", claimsPrincipal.Identity);
+        var claims = claimsPrincipal.Claims.ToList();
         var claimsDictionary = new Dictionary<string, string>(claims.Select(c => new KeyValuePair<string, string>(c.Type, c.Value)));
 
         return TypedResults.Ok(claimsDictionary);
@@ -71,7 +60,7 @@ public static class UserHandlers
 
         if (user is null)
         {
-            logger.LogWarning("The user with Guid: {0} was not found", userId);
+            logger.LogWarning("The user with Guid: {UserId} was not found", userId);
             return TypedResults.NotFound($"The user with Guid: {userId} was not found");
         }
 
@@ -102,7 +91,7 @@ public static class UserHandlers
 
         if (user is null)
         {
-            logger.LogWarning("The user with Guid: {0} was not found", userId);
+            logger.LogWarning("The user with Guid: {UserId} was not found", userId);
             return TypedResults.NotFound($"The user with Guid: {userId} was not found");
         }
 
@@ -110,7 +99,7 @@ public static class UserHandlers
 
         if (!result.Succeeded)
         {
-            logger.LogError("Updating Claims from User with Guid: {0} resulted in errors: {1}", user.Id, result.Errors);
+            logger.LogError("Updating Claims from User with Guid: {UserId} resulted in errors: {Errors}", user.Id, result.Errors);
             return ValidationProblemExtension.CreateValidationProblem(result);
         }
 
@@ -128,7 +117,7 @@ public static class UserHandlers
 
         if (user is null)
         {
-            logger.LogWarning("The user with Guid: {0} was not found", userId);
+            logger.LogWarning("The user with Guid: {UserId} was not found", userId);
             return TypedResults.NotFound($"The user with Guid: {userId} was not found");
         }
 
@@ -146,7 +135,7 @@ public static class UserHandlers
 
         if (user is null)
         {
-            logger.LogWarning("The user with Guid: {0} was not found", userId);
+            logger.LogWarning("The user with Guid: {UserId} was not found", userId);
             return TypedResults.NotFound($"The user with Guid: {userId} was not found");
         }
 

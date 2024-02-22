@@ -54,10 +54,10 @@ public static class OrganizationHandlers
 
         if (organization is null)
         {
-            logger.LogWarning("Organization with GUID: {0} was not found", organizationId);
+            logger.LogWarning("Organization with GUID: {OrganizationId} was not found", organizationId);
             return TypedResults.NotFound($"Organization with GUID: {organizationId} was not found");
         }
-        logger.LogInformation("Organization with GUID: {0} returned", organizationId);
+        logger.LogInformation("Organization with GUID: {OrganizationId} returned", organizationId);
         return TypedResults.Ok(organization);
     }
 
@@ -80,7 +80,7 @@ public static class OrganizationHandlers
         var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == request.CreatedBy);
         if (user is null)
         {
-            logger.LogWarning("User with Guid: {0} was not found", request.CreatedBy);
+            logger.LogWarning("User with Guid: {UserId} was not found", request.CreatedBy);
             return TypedResults.NotFound("User was not found");
         }
 
@@ -89,14 +89,14 @@ public static class OrganizationHandlers
         
         if (!claimsResult.Succeeded)
         {
-            logger.LogError("Updating Claims of User with Guid: {0} resulted in errors: {1}", request.CreatedBy, claimsResult.Errors);
+            logger.LogError("Updating Claims of User with Guid: {UserId} resulted in errors: {Errors}", request.CreatedBy, claimsResult.Errors);
             return ValidationProblemExtension.CreateValidationProblem(claimsResult);
         }
 
         var rolesResult = await userManager.AddToRolesAsync(user, new[] { SecurityConstants.OrganizationOwnerRole, SecurityConstants.OrganizationAdminRole });
         if (!rolesResult.Succeeded)
         {
-            logger.LogError("Updating Claims of User with Guid: {0} resulted in errors: {1}", request.CreatedBy, claimsResult.Errors);
+            logger.LogError("Updating Roles of User with Guid: {UserId} resulted in errors: {Errors}", request.CreatedBy, claimsResult.Errors);
             return ValidationProblemExtension.CreateValidationProblem(claimsResult);
         }
 
@@ -108,7 +108,7 @@ public static class OrganizationHandlers
         await dbContext.SaveChangesAsync();
         if (!updateResult.Succeeded)
         {
-            logger.LogError("Updating Roles of User with Guid: {0} resulted in errors: {1}", request.CreatedBy, rolesResult.Errors);
+            logger.LogError("Updating Roles of User with Guid: {UserId} resulted in errors: {Errors}", request.CreatedBy, rolesResult.Errors);
             return ValidationProblemExtension.CreateValidationProblem(rolesResult);
         }
 
@@ -143,12 +143,12 @@ public static class OrganizationHandlers
         var organization = await dbContext.Organizations.Include(o => o.Users).FirstOrDefaultAsync(o => o.OrganizationId == organizationId);
         if (organization is null)
         {
-            logger.LogWarning("Organization with ID {0} not found.", organizationId);
+            logger.LogWarning("Organization with ID {OrganizationId} not found.", organizationId);
             return TypedResults.NotFound($"Organization with ID {organizationId} not found.");
         }
 
         user.OrganizationId = organizationId;
-        logger.LogInformation("User with ID {0} added to Organization with ID {1}.", user.Id, organization.OrganizationId);
+        logger.LogInformation("User with ID {UserId} added to Organization with ID {OrganizationId}.", user.Id, organization.OrganizationId);
         var organizationWithUsers = new OrganizationWithUserDto
         {
             OrganizationId = organization.OrganizationId,
@@ -167,19 +167,19 @@ public static class OrganizationHandlers
         var existingClaim = await userManager.GetClaimsAsync(user);
         if (existingClaim.Any(c => c.Type == SecurityConstants.OrganizationClaimType))
         {
-            logger.LogInformation("Claim Key {0} Value {1} already exists for User with Guid: {2}", organizationClaim.Type, organizationClaim.Value, user.Id);
+            logger.LogInformation("Claim Key {OrganizationClaim} Value {OrganizationClaimValue} already exists for User with Guid: {UserId}", organizationClaim.Type, organizationClaim.Value, user.Id);
             return TypedResults.Ok(organizationWithUsers);
         }
         var result = await userManager.AddClaimAsync(user, organizationClaim);
         if (!result.Succeeded)
         {
-            logger.LogError("Updating Claims from User with Guid: {0} resulted in errors: {1}", user.Id, result.Errors);
+            logger.LogError("Updating Claims from User with Guid: {UserId} resulted in errors: {Errors}", user.Id, result.Errors);
             return ValidationProblemExtension.CreateValidationProblem(result);
         }
         var updateResult = await userManager.UpdateAsync(user);
         if (!updateResult.Succeeded)
         {
-            logger.LogError("Updating Claims from User with Guid: {0} resulted in errors: {1}", user.Id, result.Errors);
+            logger.LogError("Updating Claims from User with Guid: {UserId} resulted in errors: {Errors}", user.Id, result.Errors);
             return ValidationProblemExtension.CreateValidationProblem(result);
         }
 
@@ -203,7 +203,7 @@ public static class OrganizationHandlers
         var organization = await dbContext.Organizations.Include(o => o.Users).FirstOrDefaultAsync(o => o.OrganizationId == organizationId);
         if (organization is null)
         {
-            logger.LogWarning("Organization with ID {0} not found.", organizationId);
+            logger.LogWarning("Organization with ID {OrganizationId} not found.", organizationId);
             return TypedResults.NotFound($"Organization with ID {organizationId} not found.");
         }
 
@@ -219,20 +219,20 @@ public static class OrganizationHandlers
         };
 
         await dbContext.SaveChangesAsync();
-        logger.LogInformation("User with ID {0} received Admin privileges in Organization with ID {1}.", user.Id, organization.OrganizationId);
+        logger.LogInformation("User with ID {UserId} received Admin privileges in Organization with ID {OrganizationId}.", user.Id, organization.OrganizationId);
 
 
         var roles = await userManager.GetRolesAsync(user);
         if (roles.Contains(SecurityConstants.OrganizationAdminRole))
         {
-            logger.LogInformation("User with ID {0} already has Admin privileges in Organization with ID {1}.", user.Id, organization.OrganizationId);
+            logger.LogInformation("User with ID {UserId} already has Admin privileges in Organization with ID {OrganizationId}.", user.Id, organization.OrganizationId);
             return TypedResults.Ok(organizationWithUsers);
         }
 
         var rolesResult = await userManager.AddToRoleAsync(user, SecurityConstants.OrganizationAdminRole);
         if (!rolesResult.Succeeded)
         {
-            logger.LogError("Updating Roles from User with Guid: {0} resulted in errors: {1}", user.Id, rolesResult.Errors);
+            logger.LogError("Updating Roles from User with Guid: {UserId} resulted in errors: {Errors}", user.Id, rolesResult.Errors);
             return ValidationProblemExtension.CreateValidationProblem(rolesResult);
         }
 
@@ -241,7 +241,7 @@ public static class OrganizationHandlers
         var updateResult = await userManager.UpdateAsync(user);
         if (!updateResult.Succeeded)
         {
-            logger.LogError("Updating Claims from User with Guid: {0} resulted in errors: {1}", user.Id, updateResult.Errors);
+            logger.LogError("Updating Claims from User with Guid: {UserId} resulted in errors: {Errors}", user.Id, updateResult.Errors);
             return ValidationProblemExtension.CreateValidationProblem(updateResult);
         }
 
@@ -256,14 +256,14 @@ public static class OrganizationHandlers
         var organization = await dbContext.Organizations.FindAsync(organizationId);
         if (organization is null)
         {
-            logger.LogWarning("Organization with ID {0} not found.", organizationId);
+            logger.LogWarning("Organization with ID {OrganizationId} not found.", organizationId);
             return TypedResults.NotFound($"Organization with ID {organizationId} not found.");
         }
 
         dbContext.Organizations.Remove(organization);
         await dbContext.SaveChangesAsync();
 
-        logger.LogInformation("Deleted organization with ID {0}.", organizationId);
+        logger.LogInformation("Deleted organization with ID {OrganizationId}.", organizationId);
 
         return TypedResults.NoContent();
     }
@@ -278,14 +278,14 @@ public static class OrganizationHandlers
         var organization = await dbContext.Organizations.FindAsync(organizationId);
         if (organization is null)
         {
-            logger.LogWarning("Organization with ID {0} not found.", organizationId);
+            logger.LogWarning("Organization with ID {OrganizationId} not found.", organizationId);
             return TypedResults.NotFound($"Organization with ID {organizationId} not found.");
         }
 
         var user = await userManager.FindByIdAsync(userId.ToString());
         if (user is null)
         {
-            logger.LogWarning("User with ID {0} not found.", userId);
+            logger.LogWarning("User with ID {UserId} not found.", userId);
             return TypedResults.NotFound($"User with ID {userId} not found.");
         }
 
@@ -293,7 +293,7 @@ public static class OrganizationHandlers
         var result = await userManager.UpdateAsync(user);
         if (!result.Succeeded)
         {
-            logger.LogError("Failed to remove User with ID {0} from the organization. Errors: {1}", userId, result.Errors);
+            logger.LogError("Failed to remove User with ID {UserId} from the organization. Errors: {Errors}", userId, result.Errors);
             return ValidationProblemExtension.CreateValidationProblem(result);
         }
 
@@ -363,7 +363,7 @@ public static class OrganizationHandlers
 
         if (balanceHistories.Count < 1)
         {
-            logger.LogWarning("No Results found for OrganizationBalanceHistory with Date range from: {0} to {1}", startDate, endDate);
+            logger.LogWarning("No Results found for OrganizationBalanceHistory with Date range from: {StartDate} to {EndDate}", startDate, endDate);
             return TypedResults.NoContent();
         }
 
@@ -484,10 +484,10 @@ public static class OrganizationHandlers
 
         if (balanceByUser.Count < 1)
         {
-            logger.LogWarning("No Balances by User found for organization with ID: {0}", organizationId);
+            logger.LogWarning("No Balances by User found for organization with ID: {OrganizationId}", organizationId);
             return TypedResults.NoContent();
         }
-        logger.LogInformation("Retrieved balance by user for organization with ID {0}. Total entries: {1}", organizationId, balanceByUser.Count);
+        logger.LogInformation("Retrieved balance by user for organization with ID {OrganizationId}. Total entries: {UserCount}", organizationId, balanceByUser.Count);
 
         return TypedResults.Ok(balanceByUser);
     }
