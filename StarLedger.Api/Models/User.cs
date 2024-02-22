@@ -5,6 +5,7 @@ namespace StarLedger.Api.Models;
 
 public sealed class User : IdentityUser<Guid>
 {
+    public string? StarCitizenHandle { get; set; }
     public long Balance { get; set; }
     
     [ForeignKey("Organization")]

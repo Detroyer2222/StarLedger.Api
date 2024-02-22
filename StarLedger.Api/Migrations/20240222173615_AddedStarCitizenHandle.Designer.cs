@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StarLedger.Api.Models;
 
@@ -11,9 +12,11 @@ using StarLedger.Api.Models;
 namespace StarLedger.Api.Migrations
 {
     [DbContext(typeof(StarLedgerDbContext))]
-    partial class StarLedgerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240222173615_AddedStarCitizenHandle")]
+    partial class AddedStarCitizenHandle
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

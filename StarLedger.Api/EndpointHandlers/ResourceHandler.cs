@@ -41,7 +41,7 @@ public static class ResourceHandler
         logger.LogInformation("Getting Resource with ID: {0}", resourceId);
         var resource = await dbContext.Resources.FirstOrDefaultAsync(r => r.ResourceId == resourceId);
 
-        if (resource == null)
+        if (resource is null)
         {
             logger.LogWarning("No resource with ID: {0} found", resourceId);
             return TypedResults.NotFound($"Resource with ID: {resourceId} not found");
@@ -71,7 +71,7 @@ public static class ResourceHandler
             var existingResource = await dbContext.Resources
                 .FirstOrDefaultAsync(r => r.Code == resourceToUpdate.Code);
 
-            if (existingResource != null)
+            if (existingResource is not null)
             {
                 logger.LogInformation("Resources with Code:{0} already exists", existingResource.Code);
 

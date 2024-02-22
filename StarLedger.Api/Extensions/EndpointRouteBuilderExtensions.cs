@@ -186,4 +186,5 @@ public static class EndpointRouteBuilderExtensions
             .WithSummary("Gets a specific resource.")
             .WithDescription("This endpoint returns the details for a resource specified by its resourceId.");
     }
+    // TODO: Add Dev endpoints
 }

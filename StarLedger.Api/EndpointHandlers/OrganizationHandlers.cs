@@ -47,11 +47,12 @@ public static class OrganizationHandlers
                 Users = o.Users.Select(u => new UserDto
                 {
                     UserId = u.Id,
-                    UserName = u.UserName
+                    Email = u.Email,
+                    StarCitizenHandle = u.StarCitizenHandle
                 }).ToList()
             }).FirstOrDefaultAsync();
 
-        if (organization == null)
+        if (organization is null)
         {
             logger.LogWarning("Organization with GUID: {0} was not found", organizationId);
             return TypedResults.NotFound($"Organization with GUID: {organizationId} was not found");
@@ -74,13 +75,10 @@ public static class OrganizationHandlers
             Name = request.OrganizationName
         };
 
-        dbContext.Organizations.Add(newOrganization);
-        await dbContext.SaveChangesAsync();
-
         logger.LogInformation("Created new organization with ID {OrganizationId} and Name {Name}", newOrganization.OrganizationId, newOrganization.Name);
 
         var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == request.CreatedBy);
-        if (user == null)
+        if (user is null)
         {
             logger.LogWarning("User with Guid: {0} was not found", request.CreatedBy);
             return TypedResults.NotFound("User was not found");
@@ -88,6 +86,7 @@ public static class OrganizationHandlers
 
         var organizationClaim = new Claim(SecurityConstants.OrganizationClaimType, newOrganization.OrganizationId.ToString());
         var claimsResult = await userManager.AddClaimAsync(user, organizationClaim);
+        
         if (!claimsResult.Succeeded)
         {
             logger.LogError("Updating Claims of User with Guid: {0} resulted in errors: {1}", request.CreatedBy, claimsResult.Errors);
@@ -101,7 +100,12 @@ public static class OrganizationHandlers
             return ValidationProblemExtension.CreateValidationProblem(claimsResult);
         }
 
+        user.OrganizationId = newOrganization.OrganizationId;
+        user.IsOwner = true;
+        user.IsAdmin = true;
         var updateResult = await userManager.UpdateAsync(user);
+        dbContext.Organizations.Add(newOrganization);
+        await dbContext.SaveChangesAsync();
         if (!updateResult.Succeeded)
         {
             logger.LogError("Updating Roles of User with Guid: {0} resulted in errors: {1}", request.CreatedBy, rolesResult.Errors);
@@ -130,14 +134,14 @@ public static class OrganizationHandlers
         [FromBody] AddUserToOrganizationRequest request)
     {
         var user = await userManager.FindByIdAsync(request.UserId.ToString());
-        if (user == null)
+        if (user is null)
         {
             logger.LogWarning("User with ID {UserId} not found.", request.UserId);
             return TypedResults.NotFound($"User with ID {request.UserId} not found.");
         }
 
         var organization = await dbContext.Organizations.Include(o => o.Users).FirstOrDefaultAsync(o => o.OrganizationId == organizationId);
-        if (organization == null)
+        if (organization is null)
         {
             logger.LogWarning("Organization with ID {0} not found.", organizationId);
             return TypedResults.NotFound($"Organization with ID {organizationId} not found.");
@@ -151,7 +155,8 @@ public static class OrganizationHandlers
             Users = organization.Users.Select(u => new UserDto
             {
                 UserId = u.Id,
-                UserName = u.UserName
+                Email = u.Email,
+                StarCitizenHandle = u.StarCitizenHandle
             }).ToList()
         };
 
@@ -189,20 +194,18 @@ public static class OrganizationHandlers
     [FromBody] AddUserToOrganizationRequest request)
     {
         var user = await userManager.FindByIdAsync(request.UserId.ToString());
-        if (user == null)
+        if (user is null)
         {
             logger.LogWarning("User with ID {UserId} not found.", request.UserId);
             return TypedResults.NotFound($"User with ID {request.UserId} not found.");
         }
 
         var organization = await dbContext.Organizations.Include(o => o.Users).FirstOrDefaultAsync(o => o.OrganizationId == organizationId);
-        if (organization == null)
+        if (organization is null)
         {
             logger.LogWarning("Organization with ID {0} not found.", organizationId);
             return TypedResults.NotFound($"Organization with ID {organizationId} not found.");
         }
-
-        user.OrganizationId = organizationId;
 
         var organizationWithUsers = new OrganizationWithUserDto
         {
@@ -210,7 +213,8 @@ public static class OrganizationHandlers
             Users = organization.Users.Select(u => new UserDto
             {
                 UserId = u.Id,
-                UserName = u.UserName
+                Email = u.Email,
+                StarCitizenHandle = u.StarCitizenHandle
             }).ToList()
         };
 
@@ -232,6 +236,8 @@ public static class OrganizationHandlers
             return ValidationProblemExtension.CreateValidationProblem(rolesResult);
         }
 
+        user.OrganizationId = organizationId;
+        user.IsAdmin = true;
         var updateResult = await userManager.UpdateAsync(user);
         if (!updateResult.Succeeded)
         {
@@ -248,7 +254,7 @@ public static class OrganizationHandlers
         [FromRoute] Guid organizationId)
     {
         var organization = await dbContext.Organizations.FindAsync(organizationId);
-        if (organization == null)
+        if (organization is null)
         {
             logger.LogWarning("Organization with ID {0} not found.", organizationId);
             return TypedResults.NotFound($"Organization with ID {organizationId} not found.");
@@ -270,14 +276,14 @@ public static class OrganizationHandlers
         [FromRoute] Guid userId)
     {
         var organization = await dbContext.Organizations.FindAsync(organizationId);
-        if (organization == null)
+        if (organization is null)
         {
             logger.LogWarning("Organization with ID {0} not found.", organizationId);
             return TypedResults.NotFound($"Organization with ID {organizationId} not found.");
         }
 
         var user = await userManager.FindByIdAsync(userId.ToString());
-        if (user == null)
+        if (user is null)
         {
             logger.LogWarning("User with ID {0} not found.", userId);
             return TypedResults.NotFound($"User with ID {userId} not found.");
@@ -301,7 +307,7 @@ public static class OrganizationHandlers
         [FromRoute] Guid organizationId)
     {
         var organization = await dbContext.Organizations.Include(o => o.Users).FirstOrDefaultAsync(o => o.OrganizationId == organizationId);
-        if (organization == null)
+        if (organization is null)
         {
             logger.LogWarning("Organization with ID {OrganizationId} not found.", organizationId);
             return TypedResults.NotFound($"Organization with ID {organizationId} not found.");
@@ -332,7 +338,7 @@ public static class OrganizationHandlers
         }
 
         var organization = await dbContext.Organizations.Include(o => o.Users).FirstOrDefaultAsync(o => o.OrganizationId == organizationId);
-        if (organization == null)
+        if (organization is null)
         {
             logger.LogWarning("Organization with ID {OrganizationId} not found.", organizationId);
             return TypedResults.NotFound($"Organization with ID {organizationId} not found.");
@@ -372,7 +378,7 @@ public static class OrganizationHandlers
         [FromRoute] Guid organizationId)
     {
         var organization = await dbContext.Organizations.FirstOrDefaultAsync(o => o.OrganizationId == organizationId);
-        if (organization == null)
+        if (organization is null)
         {
             logger.LogWarning("Organization with ID {OrganizationId} not found.", organizationId);
             return TypedResults.NotFound($"Organization with ID {organizationId} not found.");
@@ -419,7 +425,7 @@ public static class OrganizationHandlers
 
         //Check if organization exists
         var organization = await dbContext.Organizations.FirstOrDefaultAsync(o => o.OrganizationId == organizationId);
-        if (organization == null)
+        if (organization is null)
         {
             logger.LogWarning("Organization with ID {OrganizationId} not found.", organizationId);
             return TypedResults.NotFound($"Organization with ID {organizationId} not found.");
@@ -462,7 +468,7 @@ public static class OrganizationHandlers
     {
         //Check if organization exists
         var organization = await dbContext.Organizations.Include(o => o.Users).FirstOrDefaultAsync(o => o.OrganizationId == organizationId);
-        if (organization == null)
+        if (organization is null)
         {
             logger.LogWarning("Organization with ID {OrganizationId} not found.", organizationId);
             return TypedResults.NotFound($"Organization with ID {organizationId} not found.");
@@ -493,7 +499,7 @@ public static class OrganizationHandlers
     {
         //Check if organization exists
         var organization = await dbContext.Organizations.FirstOrDefaultAsync(o => o.OrganizationId == organizationId);
-        if (organization == null)
+        if (organization is null)
         {
             logger.LogWarning("Organization with ID {OrganizationId} not found.", organizationId);
             return TypedResults.NotFound($"Organization with ID {organizationId} not found.");

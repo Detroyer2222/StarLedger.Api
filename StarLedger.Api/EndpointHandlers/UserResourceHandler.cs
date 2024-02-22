@@ -43,7 +43,7 @@ public static class UserResourceHandler
         var userResource =
             await dbContext.UserResources.FirstOrDefaultAsync(ur => ur.UserId == userId && ur.ResourceId == resourceId);
 
-        if (userResource == null)
+        if (userResource is null)
         {
             logger.LogWarning($"UserResource with UserID[{userId}] and ResourceID[{resourceId}] not found");
             return TypedResults.NotFound($"UserResource with UserID {userId} not found");
@@ -69,7 +69,7 @@ public static class UserResourceHandler
         var userResource = await dbContext.UserResources
             .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.ResourceId == request.ResourceId);
 
-        if (userResource == null)
+        if (userResource is null)
         {
             logger.LogWarning("UserResource with UserID {UserId} and ResourceID {ResourceId} not found.", userId,
                 request.ResourceId);
@@ -118,7 +118,7 @@ public static class UserResourceHandler
                                         rqh.ResourceId == request.ResourceId && 
                                         rqh.Timestamp == today);
 
-        if (resourceQuantityHistory == null)
+        if (resourceQuantityHistory is null)
         {
             resourceQuantityHistory = new ResourceQuantityHistory
             {
@@ -162,17 +162,17 @@ public static class UserResourceHandler
     {
         var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
 
-        if (user == null)
+        if (user is null)
         {
             logger.LogWarning("The user with Guid: {0} was not found", userId);
             return TypedResults.NotFound($"The user with Guid: {userId} was not found");
         }
 
-        if (startDate == null)
+        if (startDate is null)
         {
             startDate = DateOnly.MinValue;
         }
-        else if (endDate == null)
+        else if (endDate is null)
         {
             endDate = DateOnly.MaxValue;
         }

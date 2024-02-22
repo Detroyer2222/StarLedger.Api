@@ -18,14 +18,14 @@ public static class UserHandlers
         [FromRoute] Guid userId)
     {
         var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
-        
-        if (user == null)
+
+        if (user is null)
         {
             logger.LogWarning("The user with Guid: {0} was not found", userId);
             return TypedResults.NotFound($"The user with Guid: {userId} was not found");
         }
 
-        return TypedResults.Ok(new FullUserDto{ UserId = user.Id, UserName = user.UserName, Email = user.Email, OrganizationId = user.OrganizationId ?? Guid.Empty});
+        return TypedResults.Ok(new FullUserDto { UserId = user.Id, StarCitizenHandle = user.StarCitizenHandle, Email = user.Email, OrganizationId = user.OrganizationId ?? Guid.Empty });
     }
 
     public static async Task<Results<NotFound<string>, Ok<List<UserDto>>>> GetUsersAsync(
@@ -33,22 +33,34 @@ public static class UserHandlers
         ILogger<UserDto> logger)
     {
         var users = await dbContext.Users
-            .Select(u => new UserDto {UserId = u.Id, UserName = u.UserName})
+            .Select(u => new UserDto { UserId = u.Id, Email = u.Email, StarCitizenHandle = u.StarCitizenHandle })
             .ToListAsync();
-        
+
         return TypedResults.Ok(users);
     }
-    
-    public static async Task<Ok<Dictionary<string, string>>> GetUserClaimsAsync(
+
+    public static async Task<Results<Ok<Dictionary<string, string>>, NotFound<string>>> GetUserClaimsAsync(
+        UserManager<User> userManager,
         ILogger<UserDto> logger,
         ClaimsPrincipal claimsPrincipal)
     {
-        var claims = claimsPrincipal.Claims;
+        var user = await userManager.GetUserAsync(claimsPrincipal);
+        if (user is null)
+        {
+            logger.LogWarning("The user with Guid: {0} was not found", user.Id);
+            return TypedResults.NotFound($"The user with Guid: {user.Id} was not found");
+        }
+
+        var claims = await userManager.GetClaimsAsync(user);
+        if (claims.Count < 1)
+        {
+            claims = claimsPrincipal.Claims.ToList();
+        }
         var claimsDictionary = new Dictionary<string, string>(claims.Select(c => new KeyValuePair<string, string>(c.Type, c.Value)));
-        
+
         return TypedResults.Ok(claimsDictionary);
     }
-    
+
     public static async Task<Results<NotFound<string>, Ok<FullUserDto>>> UpdateUserAsync(
         UserManager<User> userManager,
         ILogger<FullUserDto> logger,
@@ -56,27 +68,29 @@ public static class UserHandlers
         [FromBody] UpdateUserRequest updateUserRequest)
     {
         var user = await userManager.FindByIdAsync(userId.ToString());
-        
-        if (user == null)
+
+        if (user is null)
         {
             logger.LogWarning("The user with Guid: {0} was not found", userId);
             return TypedResults.NotFound($"The user with Guid: {userId} was not found");
         }
 
 
-        if (updateUserRequest.UserName != null)
+        if (updateUserRequest.StarCitizenHandle is not null)
         {
-            user.UserName = updateUserRequest.UserName;
+            await userManager.AddClaimAsync(user, new Claim("StarCitizenHandle", updateUserRequest.StarCitizenHandle));
+            user.StarCitizenHandle = updateUserRequest.StarCitizenHandle;
         }
 
-        if (updateUserRequest.Email != null)
+        if (updateUserRequest.Email is not null)
         {
             user.Email = updateUserRequest.Email;
+            user.UserName = updateUserRequest.Email;
         }
 
         await userManager.UpdateAsync(user);
-        
-        return TypedResults.Ok(new FullUserDto{ UserId = user.Id, UserName = user.UserName, Email = user.Email, OrganizationId = user.OrganizationId ?? Guid.Empty});
+
+        return TypedResults.Ok(new FullUserDto { UserId = user.Id, StarCitizenHandle = user.StarCitizenHandle, Email = user.Email, OrganizationId = user.OrganizationId ?? Guid.Empty });
     }
 
     public static async Task<Results<NotFound<string>, ValidationProblem, NoContent>> DeleteUserAsync(
@@ -85,8 +99,8 @@ public static class UserHandlers
         [FromRoute] Guid userId)
     {
         var user = await userManager.FindByIdAsync(userId.ToString());
-        
-        if (user == null)
+
+        if (user is null)
         {
             logger.LogWarning("The user with Guid: {0} was not found", userId);
             return TypedResults.NotFound($"The user with Guid: {userId} was not found");
@@ -99,28 +113,28 @@ public static class UserHandlers
             logger.LogError("Updating Claims from User with Guid: {0} resulted in errors: {1}", user.Id, result.Errors);
             return ValidationProblemExtension.CreateValidationProblem(result);
         }
-        
+
         logger.LogInformation("User with ID {UserId} has been deleted.", userId);
         return TypedResults.NoContent();
 
     }
-    
+
     public static async Task<Results<NotFound<string>, Ok<UserBalanceDto>>> GetUserBalanceAsync(
         StarLedgerDbContext dbContext,
         ILogger<UserBalanceDto> logger,
         [FromRoute] Guid userId)
     {
         var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
-        
-        if (user == null)
+
+        if (user is null)
         {
             logger.LogWarning("The user with Guid: {0} was not found", userId);
             return TypedResults.NotFound($"The user with Guid: {userId} was not found");
         }
 
-        return TypedResults.Ok(new UserBalanceDto {UserId = user.Id, Balance = user.Balance});
+        return TypedResults.Ok(new UserBalanceDto { UserId = user.Id, Balance = user.Balance });
     }
-    
+
     public static async Task<Results<NotFound<string>, Ok<List<UserBalanceHistoryDto>>>> GetUserBalanceHistoryAsync(
         StarLedgerDbContext dbContext,
         ILogger<UserBalanceHistoryDto> logger,
@@ -130,24 +144,24 @@ public static class UserHandlers
     {
         var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
 
-        if (user == null)
+        if (user is null)
         {
             logger.LogWarning("The user with Guid: {0} was not found", userId);
             return TypedResults.NotFound($"The user with Guid: {userId} was not found");
         }
 
-        if (startDate == null)
+        if (startDate is null)
         {
             startDate = DateOnly.MinValue;
         }
-        else if (endDate == null)
+        else if (endDate is null)
         {
             endDate = DateOnly.MaxValue;
         }
-        
+
         var balanceHistory = await dbContext.UserBalanceHistories
             .Where(ubh => ubh.UserId == userId && ubh.Timestamp >= startDate && ubh.Timestamp <= endDate)
-            .Select(ubh => new UserBalanceHistoryDto 
+            .Select(ubh => new UserBalanceHistoryDto
             {
                 Id = ubh.Id,
                 UserId = ubh.UserId,
@@ -155,12 +169,12 @@ public static class UserHandlers
                 Balance = ubh.Balance
             })
             .OrderBy(u => u.Timestamp) // Order by ascending
-            //.OrderByDescending(u => u.Timestamp) Order by descending
+                                       //.OrderByDescending(u => u.Timestamp) Order by descending
             .ToListAsync();
 
         return TypedResults.Ok(balanceHistory);
     }
-    
+
     public static async Task<Results<NotFound<string>, UnprocessableEntity<string>, Created<UserBalanceDto>>> UpdateUserBalanceAsync(
         StarLedgerDbContext dbContext,
         LinkGenerator linkGenerator,
@@ -170,7 +184,7 @@ public static class UserHandlers
         [FromBody] UpdateUserBalanceRequestDto request)
     {
         var user = await dbContext.Users.FindAsync(userId);
-        if (user == null)
+        if (user is null)
         {
             logger.LogWarning("User with Guid {UserId} not found.", userId);
             return TypedResults.NotFound($"User with Guid {userId} was not found");
@@ -206,7 +220,7 @@ public static class UserHandlers
         var balanceHistory = await dbContext.UserBalanceHistories
             .FirstOrDefaultAsync(ubh => ubh.UserId == userId &&
                                         ubh.Timestamp == today);
-        if (balanceHistory == null)
+        if (balanceHistory is null)
         {
             balanceHistory = new UserBalanceHistory
             {
@@ -229,7 +243,7 @@ public static class UserHandlers
             new { userId = user.Id });
 
         logger.LogInformation("Updated balance and balance history for user {UserId}. New balance: {NewBalance}", userId, user.Balance);
-        return TypedResults.Created(linkToUserBalance ,new UserBalanceDto
+        return TypedResults.Created(linkToUserBalance, new UserBalanceDto
         {
             UserId = user.Id,
             Balance = user.Balance
