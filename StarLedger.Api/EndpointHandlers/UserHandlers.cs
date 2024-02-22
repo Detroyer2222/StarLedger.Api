@@ -41,17 +41,11 @@ public static class UserHandlers
     
     public static async Task<Ok<Dictionary<string, string>>> GetUserInformationAsync(
         ILogger<UserDto> logger,
-        ClaimsPrincipal claimsPrincipal,
-        UserManager<User> userManager)
+        ClaimsPrincipal claimsPrincipal)
     {
-        var user = await userManager.GetUserAsync(claimsPrincipal);
-
-        var claims = await userManager.GetClaimsAsync(user);
-        var roles = await userManager.GetRolesAsync(user);
-
+        var claims = claimsPrincipal.Claims;
         var claimsDictionary = new Dictionary<string, string>(claims.Select(c => new KeyValuePair<string, string>(c.Type, c.Value)));
-        claimsDictionary.Add("Roles", string.Join(", ", roles));
-
+        
         return TypedResults.Ok(claimsDictionary);
     }
     
