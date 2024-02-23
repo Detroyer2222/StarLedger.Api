@@ -27,7 +27,8 @@ public static class EndpointRouteBuilderExtensions
         userEndpoints.MapGet("", UserHandlers.GetUsersAsync)
             .WithName("GetUsers")
             .WithSummary("Gets all users.")
-            .WithDescription("This endpoint returns all users.");
+            .WithDescription("This endpoint returns all users.")
+            .RequireAuthorization(SecurityConstants.DeveloperPolicy);
         userEndpoints.MapGet("/claims", UserHandlers.GetUserClaimsAsync)
             .WithName("GetUserClaims")
             .WithSummary("Gets claims for a specific user.")
@@ -43,15 +44,18 @@ public static class EndpointRouteBuilderExtensions
         userWithGuidEndpoints.MapGet("/balance", UserHandlers.GetUserBalanceAsync)
             .WithName("GetUserBalance")
             .WithSummary("Gets the balance for a specific user.")
-            .WithDescription("This endpoint returns the current balance of the user associated to the specified userId.");
+            .WithDescription(
+                "This endpoint returns the current balance of the user associated to the specified userId.");
         userWithGuidEndpoints.MapGet("/balance/history", UserHandlers.GetUserBalanceHistoryAsync)
             .WithName("GetUserBalanceHistory")
             .WithSummary("Gets the balance history for a specific user.")
-            .WithDescription("This endpoint returns the balance history of the user associated to the specified userId.");
+            .WithDescription(
+                "This endpoint returns the balance history of the user associated to the specified userId.");
         userWithGuidEndpoints.MapPost("/balance/history", UserHandlers.UpdateUserBalanceAsync)
             .WithName("UpdateUserBalance")
             .WithSummary("Updates balance for a specific user.")
-            .WithDescription("This endpoint updates and stores the current balance of the user associated to the specified userId.");
+            .WithDescription(
+                "This endpoint updates and stores the current balance of the user associated to the specified userId.");
         userWithGuidEndpoints.MapDelete("", UserHandlers.DeleteUserAsync)
             .WithName("DeleteUser")
             .WithSummary("Deletes a specific user.")
@@ -169,6 +173,7 @@ public static class EndpointRouteBuilderExtensions
     {
         var resourceEndpoints = endpointRouteBuilder.MapGroup("/resources")
             .WithOpenApi()
+            .RequireAuthorization()
             .WithTags("Resource");
         var resourceWithIdEndpoints = resourceEndpoints.MapGroup("/{resourceId:int}");
 
@@ -187,4 +192,12 @@ public static class EndpointRouteBuilderExtensions
             .WithDescription("This endpoint returns the details for a resource specified by its resourceId.");
     }
     // TODO: Add Dev endpoints
+    public static void RegisterDevEndpoints(this IEndpointRouteBuilder endpointRouteBuilder)
+    {
+        var devEndpoints = endpointRouteBuilder.MapGroup("/dev")
+            .WithOpenApi()
+            .RequireAuthorization(SecurityConstants.DeveloperPolicy)
+            .WithTags("Dev");
+
+    }
 }
