@@ -46,16 +46,16 @@ public static class EndpointRouteBuilderExtensions
             .WithSummary("Gets the balance for a specific user.")
             .WithDescription(
                 "This endpoint returns the current balance of the user associated to the specified userId.");
+        userWithGuidEndpoints.MapPost("/balance/", UserHandlers.UpdateUserBalanceAsync)
+            .WithName("UpdateUserBalance")
+            .WithSummary("Updates balance for a specific user.")
+            .WithDescription(
+                "This endpoint updates and stores the current balance of the user associated to the specified userId.");
         userWithGuidEndpoints.MapGet("/balance/history", UserHandlers.GetUserBalanceHistoryAsync)
             .WithName("GetUserBalanceHistory")
             .WithSummary("Gets the balance history for a specific user.")
             .WithDescription(
                 "This endpoint returns the balance history of the user associated to the specified userId.");
-        userWithGuidEndpoints.MapPost("/balance/history", UserHandlers.UpdateUserBalanceAsync)
-            .WithName("UpdateUserBalance")
-            .WithSummary("Updates balance for a specific user.")
-            .WithDescription(
-                "This endpoint updates and stores the current balance of the user associated to the specified userId.");
         userWithGuidEndpoints.MapDelete("", UserHandlers.DeleteUserAsync)
             .WithName("DeleteUser")
             .WithSummary("Deletes a specific user.")
